@@ -9,6 +9,9 @@ class ScoutHonkbeatPlugin < Scout::Plugin
     machine_file_path = "/data/honk/shared/status/#{host}/machine_status.txt"
     external_dependencies_file_path = "/data/honk/shared/status/#{host}/dependency_status.txt"
 
+    unless File.exists?(machine_file_path) && File.exists?(external_dependencies_file_path)
+      return
+    end
     machine_status = JSON.parse(File.read(machine_file_path))[0]
     external_status = JSON.parse(File.read(external_dependencies_file_path))
 
