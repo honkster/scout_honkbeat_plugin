@@ -7,7 +7,13 @@ class ScoutHonkbeatPlugin < Scout::Plugin
     if report_files_exist?
       process_report_files
     else
-      alert("There are no status files available")
+      last_files_alert  = memory(:no_status_files_at)
+      if(last_files_alert.nil? || (Time.now -last_files_alert)/60 > 30.0)
+        alert("There are no status files available")
+        remember(:no_status_files_at =>Time.now)
+      else
+        logger.info "Ignoring notification for no status files, less than 30 minutes apart"
+      end
     end
   end
 
@@ -22,7 +28,7 @@ class ScoutHonkbeatPlugin < Scout::Plugin
   end
 
   def check_server_health
-    machine_status = JSON.parse(File.read(machine_file_path))[0]
+    machine_status = JSON.parse(File.read(machine_file_path))
     down = machine_status.map do |error|
       "#{error['hostname']}:#{error['port']}"
     end
