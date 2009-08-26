@@ -56,7 +56,7 @@ class ScoutExternalDependencyPlugin < Scout::Plugin
         case check_name
           when 'matcher'
             "- #{error_text.inspect} not seen on #{error['name']}"
-          when 'url'
+          else
             "- #{error_text.inspect} by #{error['name']}"
         end
       end
