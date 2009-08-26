@@ -63,7 +63,7 @@ class ScoutHonkbeatPlugin < Scout::Plugin
     now_up   = []
     now_up   = last_down - down if last_down
 
-    report_data["Server Errors"] = down.length
+    report_data["Services Down"] = down.length
     alert("Success: The following services are UP:\n#{now_up.join("\n")}") unless now_up.empty?
 
     last_machine_error_alert_sent_at = memory(:last_machine_error_alert_sent_at)
