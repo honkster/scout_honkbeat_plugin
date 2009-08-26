@@ -1,4 +1,3 @@
-
 require 'json'
 
 class ScoutHonkbeatPlugin < Scout::Plugin
@@ -8,7 +7,7 @@ class ScoutHonkbeatPlugin < Scout::Plugin
       process_report_files
     else
       last_files_alert  = memory(:no_status_files_at)
-      if(last_files_alert.nil? || (Time.now -last_files_alert)/60 > 30.0)
+      if(last_files_alert.nil? || (Time.now - last_files_alert)/60 > 30.0)
         alert("There are no status files available")
         remember(:no_status_files_at =>Time.now)
       else
@@ -18,16 +17,20 @@ class ScoutHonkbeatPlugin < Scout::Plugin
   end
 
   def process_report_files
-    check_server_health
+    check_machine_status
     check_external_services
     report(report_data)
   end
 
-  def report_files_exist?
-    File.exists?(machine_file_path) && File.exists?(external_dependencies_file_path)
+  def machine_file_exists?
+    File.exists?(machine_file_path)
   end
 
-  def check_server_health
+  def dependency_file_exists?
+    File.exists?(external_dependencies_file_path)
+  end
+
+  def check_machine_status
     machine_status = JSON.parse(File.read(machine_file_path))
     down = machine_status.map do |error|
       "#{error['hostname']}:#{error['port']}"
@@ -69,11 +72,15 @@ class ScoutHonkbeatPlugin < Scout::Plugin
   end
 
   def machine_file_path
-    "/data/honk/shared/status/#{host}/machine_status.txt"
+    "#{status_path}/machine_status.txt"
   end
 
   def external_dependencies_file_path
-    "/data/honk/shared/status/#{host}/dependency_status.txt"
+    "#{status_path}/dependency_status.txt"
+  end
+
+  def status_path
+    "/data/honk/shared/status/#{host}"
   end
 
   def report_data
