@@ -31,3 +31,17 @@ require File.dirname(__FILE__) + "/../lib/scout_honkbeat_plugin"
 Spec::Runner.configure do |config|
   config.mock_with RR::Adapters::Rspec
 end
+
+class Spec::ExampleGroup
+  def self.it_with_definition_backtrace(*args, &block)
+    definition_backtrace = caller.join("\n\t")
+    it(*args) do
+      begin
+        instance_eval(&block)
+      rescue => e
+        e.message.replace("#{e.message}\n#{ definition_backtrace }")
+        raise e
+      end
+    end
+  end  
+end

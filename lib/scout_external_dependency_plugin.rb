@@ -44,8 +44,8 @@ class ScoutHonkbeatPlugin < Scout::Plugin
     down     = down - last_down if last_down
 
     report_data["Server Errors"] = down.join(', ')
-    alert("The following servers are now UP   : #{now_up.join(', ')}") unless now_up.empty?
-    alert("The following servers are now DOWN : #{down.join(', ')}") unless down.empty?
+    alert("The following services are now UP   : #{now_up.join(', ')}") unless now_up.empty?
+    alert("The following services are now DOWN : #{down.join(', ')}") unless down.empty?
   end
 
   def check_external_services

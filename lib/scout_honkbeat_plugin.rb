@@ -5,56 +5,74 @@ class ScoutHonkbeatPlugin < Scout::Plugin
   ALERT_INTERVAL_IN_MINUTES = 30
 
   def build_report
-    no_machine_status_file_at = memory(:last_missing_file_alert_sent_at)
-
-    if machine_file_exists?
-      if no_machine_status_file_at
-        alert("Success: machine_status.txt is back")
-      end
-
-      stale_status_file_at = memory(:last_stale_file_alert_sent_at)
-      if machine_file_is_current?
-        if stale_status_file_at
-          alert("Success: machine_status.txt is no longer stale")
-        end
+    on_machine_file_exists do
+      on_machine_file_is_fresh do
         check_machine_status
         report(report_data)
-      else
-        if alert_interval_exceeded?(stale_status_file_at)
-          alert("Error: machine_status.txt is stale")
-          remember(:last_stale_file_alert_sent_at, Time.now)
-        else
-          remember(:last_stale_file_alert_sent_at, stale_status_file_at)
-          logger.info "Ignoring notification for stale status files, less than #{ALERT_INTERVAL_IN_MINUTES} minutes apart"
-        end
       end
+    end
+  end
+
+  def on_machine_file_exists
+    last_missing_file_alert_sent_at = memory(:last_missing_file_alert_sent_at)
+    if machine_file_exists?
+      if last_missing_file_alert_sent_at
+        alert("Success: machine_status.txt is back")
+      end
+      yield
     else
-      if alert_interval_exceeded?(no_machine_status_file_at)
-        alert("Error: machine_status.txt is missing")
-        remember(:last_missing_file_alert_sent_at, Time.now)
-      else
-        remember(:last_missing_file_alert_sent_at, no_machine_status_file_at)
-        logger.info "Ignoring notification for no status files, less than #{ALERT_INTERVAL_IN_MINUTES} minutes apart"
+      send_error_if_inverval_exceeded(last_missing_file_alert_sent_at, :last_missing_file_alert_sent_at,
+                                      "Error: machine_status.txt is missing")
+    end
+  end
+
+  def on_machine_file_is_fresh
+    last_stale_file_alert_sent_at = memory(:last_stale_file_alert_sent_at)
+    if machine_file_is_current?
+      if last_stale_file_alert_sent_at
+        alert("Success: machine_status.txt is no longer stale")
       end
+      yield
+    else
+      send_error_if_inverval_exceeded(last_stale_file_alert_sent_at, :last_stale_file_alert_sent_at,
+                                      "Error: machine_status.txt is stale")
+    end
+  end
+
+  def send_error_if_inverval_exceeded(last_alert_sent_at, last_alert_sent_at_name, error_message)
+    if alert_interval_exceeded?(last_alert_sent_at)
+      alert(error_message)
+      remember(last_alert_sent_at_name, Time.now)
+    else
+      remember(last_alert_sent_at_name, last_alert_sent_at)
+      logger.info "Ignoring notification for '#{error_message}', less than #{ALERT_INTERVAL_IN_MINUTES} minutes apart"
     end
   end
 
   def check_machine_status
     machine_status = JSON.parse(File.read(machine_file_path))
     down = machine_status.map do |error|
-      "#{error['hostname']}:#{error['port']}"
-    end
+      error['checks'].keys.map do |service|
+        "- #{service} on #{error['hostname']}:#{error['port']}"
+      end
+    end.flatten.sort
 
     last_down = memory(:down)
     remember(:down, down)
 
     now_up   = []
     now_up   = last_down - down if last_down
-    down     = down - last_down if last_down
 
-    report_data["Server Errors"] = down.join(', ')
-    alert("The following servers are now UP   : #{now_up.join(', ')}") unless now_up.empty?
-    alert("The following servers are now DOWN : #{down.join(', ')}") unless down.empty?
+    report_data["Server Errors"] = down.length
+    alert("Success: The following services are UP:\n#{now_up.join("\n")}") unless now_up.empty?
+
+    last_machine_error_alert_sent_at = memory(:last_machine_error_alert_sent_at)
+    if !down.empty? && (last_down != down || alert_interval_exceeded?(last_machine_error_alert_sent_at))
+      alert("Error: The following services are DOWN:\n#{down.join("\n")}")
+      remember(:last_machine_error_alert_sent_at, Time.now)
+    else
+      remember(:last_machine_error_alert_sent_at, last_machine_error_alert_sent_at)
+    end
   end
 
   def alert_interval_exceeded?(last_time)
