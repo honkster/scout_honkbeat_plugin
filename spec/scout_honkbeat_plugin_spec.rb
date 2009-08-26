@@ -189,25 +189,25 @@ describe ScoutHonkbeatPlugin do
 
           context "when the same errors have been seen previously" do
             before do
-              set_memory(:down, ["- database on hostname1:5000", "- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- database on hostname1:5000: Cannot connect to database", "- memcached on hostname1:5000: Cannot connect to memcached", "- solr on hostname1:5001: Cannot connect to solr"])
             end
 
             should_periodically_send_error_alerts(
               :last_machine_error_alert_sent_at,
-              "Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001"
+              "Error: The following services are DOWN:\n- database on hostname1:5000: Cannot connect to database\n- memcached on hostname1:5000: Cannot connect to memcached\n- solr on hostname1:5001: Cannot connect to solr"
             )
           end
 
           context "when the same errors have not been seen previously" do
             it "sends an alert about the errors" do
               plugin.build_report
-              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000: Cannot connect to database\n- memcached on hostname1:5000: Cannot connect to memcached\n- solr on hostname1:5001: Cannot connect to solr")
             end
           end
 
           context "there are some errors on this machine that are now gone" do
             before do
-              set_memory(:down, ["- database on hostname1:5000", "- database on hostname1:5002", "- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- database on hostname1:5000: Cannot connect to database", "- database on hostname1:5002", "- memcached on hostname1:5000: Cannot connect to memcached", "- solr on hostname1:5001: Cannot connect to solr"])
             end
 
             it "should alert us that the database on hostname1:5002 has come back up" do
@@ -217,13 +217,13 @@ describe ScoutHonkbeatPlugin do
 
             it "should alert us about the systems that are still down" do
               plugin.build_report
-              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000: Cannot connect to database\n- memcached on hostname1:5000: Cannot connect to memcached\n- solr on hostname1:5001: Cannot connect to solr")
             end
           end
 
           context "there are additional services down now that were not down before" do
             before do
-              set_memory(:down, ["- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- memcached on hostname1:5000: Cannot connect to memcached", "- solr on hostname1:5001: Cannot connect to solr"])
             end
 
             it "should not send a success message" do
@@ -233,7 +233,7 @@ describe ScoutHonkbeatPlugin do
 
             it "should send a down alert message" do
               plugin.build_report
-              plugin.alerts.should match_in_collection("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should match_in_collection("Error: The following services are DOWN:\n- database on hostname1:5000: Cannot connect to database\n- memcached on hostname1:5000: Cannot connect to memcached\n- solr on hostname1:5001: Cannot connect to solr")
             end
           end
 

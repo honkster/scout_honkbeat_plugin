@@ -52,8 +52,8 @@ class ScoutHonkbeatPlugin < Scout::Plugin
   def check_machine_status
     machine_status = JSON.parse(File.read(machine_file_path))
     down = machine_status.map do |error|
-      error['checks'].keys.map do |service|
-        "- #{service} on #{error['hostname']}:#{error['port']}"
+      error['checks'].map do |service, error_text|
+        "- #{service} on #{error['hostname']}:#{error['port']}: #{error_text}"
       end
     end.flatten.sort
 
