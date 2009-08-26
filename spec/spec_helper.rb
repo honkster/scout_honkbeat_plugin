@@ -27,6 +27,7 @@ module Scout
 end
 
 require File.dirname(__FILE__) + "/../lib/scout_honkbeat_plugin"
+require File.dirname(__FILE__) + "/../lib/scout_external_dependency_plugin"
 
 Spec::Runner.configure do |config|
   config.mock_with RR::Adapters::Rspec
@@ -43,5 +44,17 @@ class Spec::ExampleGroup
         raise e
       end
     end
-  end  
+  end
+
+  def match_in_collection(matcher)
+    if matcher.is_a?(Regexp)
+      simple_matcher(%Q|match #{matcher.inspect} in the collection|) do |given|
+        given.any? {|i| i =~ matcher}
+      end
+    else
+      simple_matcher(%Q|match '#{matcher}' in the collection|) do |given|
+        given.any? {|i| i == matcher}
+      end
+    end
+  end
 end

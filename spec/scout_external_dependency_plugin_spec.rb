@@ -1,16 +1,16 @@
 require "#{File.dirname(__FILE__)}/spec_helper"
 
-describe ScoutHonkbeatPlugin do
-  attr_reader :plugin, :shared_dir, :machine_status_file_path
+describe ScoutExternalDependencyPlugin do
+  attr_reader :plugin, :shared_dir, :dependency_status_file_path
 
   before do
-    @plugin = ScoutHonkbeatPlugin.new
+    @plugin = ScoutExternalDependencyPlugin.new
     @shared_dir = "#{File.dirname(__FILE__)}/shared_dir"
     FileUtils.rm_rf(shared_dir)
     FileUtils.mkdir_p(shared_dir)
     stub(@plugin).status_path { shared_dir }
 
-    @machine_status_file_path = "#{shared_dir}/machine_status.txt"
+    @dependency_status_file_path = "#{shared_dir}/dependency_status.txt"
 
     stub(plugin).memory { nil }
     stub(plugin).remember
@@ -62,7 +62,7 @@ describe ScoutHonkbeatPlugin do
           mock(plugin).memory(memory_item_name) { last_alert_sent_at }
         end
 
-        it_with_definition_backtrace "sends an alert about the missing machine status file" do
+        it_with_definition_backtrace "sends an alert about the missing dependency status file" do
           plugin.build_report
           plugin.alerts.should match_in_collection(error_message)
         end
@@ -88,7 +88,7 @@ describe ScoutHonkbeatPlugin do
           plugin.build_report
         end
 
-        it_with_definition_backtrace "should not send an alert indicating that the machine status file is back" do
+        it_with_definition_backtrace "should not send an alert indicating that the dependency status file is back" do
           plugin.build_report
           plugin.alerts.should_not match_in_collection(success_message)
         end
@@ -104,46 +104,46 @@ describe ScoutHonkbeatPlugin do
           plugin.build_report
         end
 
-        it_with_definition_backtrace "should send an alert indicating that the machine status file is back" do
+        it_with_definition_backtrace "should send an alert indicating that the dependency status file is back" do
           plugin.build_report
           plugin.alerts.should match_in_collection(success_message)
         end
       end
     end
 
-    context "when the machine status file does not exist" do
+    context "when the dependency status file does not exist" do
       before do
-        File.exists?(machine_status_file_path).should be_false
+        File.exists?(dependency_status_file_path).should be_false
       end
 
-      should_periodically_send_error_alerts(:last_missing_file_alert_sent_at, /Error: machine_status.txt is missing/)
+      should_periodically_send_error_alerts(:last_missing_file_alert_sent_at, /Error: dependency_status.txt is missing/)
     end
 
-    context "when the machine status file exists" do
+    context "when the dependency status file exists" do
       before do
-        File.open(machine_status_file_path, "w") do |file|
+        File.open(dependency_status_file_path, "w") do |file|
           file.write([].to_json)
         end
-        File.exists?(machine_status_file_path).should be_true
+        File.exists?(dependency_status_file_path).should be_true
       end
 
-      describe "freshness of machine status file" do
-        it "should not alert about a missing machine status file" do
+      describe "freshness of dependency status file" do
+        it "should not alert about a missing dependency status file" do
           plugin.build_report
-          plugin.alerts.should_not match_in_collection("Error: machine_status.txt is missing")
+          plugin.alerts.should_not match_in_collection("Error: dependency_status.txt is missing")
         end
 
-        should_send_success_alert(:last_missing_file_alert_sent_at, "Success: machine_status.txt is back")
+        should_send_success_alert(:last_missing_file_alert_sent_at, "Success: dependency_status.txt is back")
 
-        context "when the machine status file is less than ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES minutes old" do
+        context "when the dependency status file is less than ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES minutes old" do
           before do
-            File.mtime(machine_status_file_path).should > (Time.now - (ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES - 1) * 60)
+            File.mtime(dependency_status_file_path).should > (Time.now - (ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES - 1) * 60)
           end
 
           context "when :last_stale_file_alert_sent_at is not set" do
-            it "should not alert about the age of the machine status file" do
+            it "should not alert about the age of the dependency status file" do
               plugin.build_report
-              plugin.alerts.should_not match_in_collection("Error: machine_status.txt is stale")
+              plugin.alerts.should_not match_in_collection("Error: dependency_status.txt is stale")
             end
 
             it "should not remember :last_stale_file_alert_sent_at" do
@@ -152,78 +152,96 @@ describe ScoutHonkbeatPlugin do
             end
           end
 
-          should_send_success_alert(:last_stale_file_alert_sent_at, "Success: machine_status.txt is no longer stale")
+          should_send_success_alert(:last_stale_file_alert_sent_at, "Success: dependency_status.txt is no longer stale")
         end
 
-        context "when the machine status file is more than ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES minutes old" do
+        context "when the dependency status file is more than ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES minutes old" do
           before do
             time = Time.now - ((ScoutHonkbeatPlugin::STALE_FILE_THRESHOLD_IN_MINUTES + 1) * 60)
-            system "touch -t #{time.strftime('%Y%m%d%H%M.%S')} #{machine_status_file_path}"
-            File.exists?(machine_status_file_path).should be_true
+            system "touch -t #{time.strftime('%Y%m%d%H%M.%S')} #{dependency_status_file_path}"
+            File.exists?(dependency_status_file_path).should be_true
           end
 
-          should_periodically_send_error_alerts(:last_stale_file_alert_sent_at, "Error: machine_status.txt is stale")
+          should_periodically_send_error_alerts(:last_stale_file_alert_sent_at, "Error: dependency_status.txt is stale")
         end
       end
 
-      describe "contents of machine status file" do
-        context "there are errors on mongrels on this machine" do
+      describe "contents of dependency status file" do
+        def self.facebook_matcher_error;
+          "Welcome to Facebook";
+        end
+
+        def facebook_matcher_error;
+          self.class.facebook_matcher_error;
+        end
+
+        def self.rpx_connection_refused_error;
+          "Connection Refused";
+        end
+
+        def rpx_connection_refused_error;
+          self.class.rpx_connection_refused_error;
+        end
+
+        context "there are errors on remote services" do
           before do
-            File.open(machine_status_file_path, 'w') do |file|
-              file.print [{
-                'hostname' => 'hostname1',
-                'port' => 5000,
-                'checks' => {
-                  'database' => "Cannot connect to database",
-                  'memcached' => "Cannot connect to memcached",
+            File.open(dependency_status_file_path, 'w') do |file|
+              file.print [
+                {
+                  'name'   => 'Facebook',
+                  'timestamp' => Time.now,
+                  'checks' => {
+                    'matcher' => facebook_matcher_error
                   }
-              }, {
-                'hostname' => 'hostname1',
-                'port' => 5001,
-                'checks' => {
-                  'solr' => "Cannot connect to solr",
+                },
+                {
+                  'name'   => 'RPX',
+                  'timestamp' => Time.now,
+                  'checks' => {
+                    'url' => rpx_connection_refused_error
                   }
-              }].to_json
+                }
+              ].to_json
             end
           end
 
           context "when the same errors have been seen previously" do
             before do
-              set_memory(:down, ["- database on hostname1:5000", "- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- #{rpx_connection_refused_error.inspect} by RPX", "- #{facebook_matcher_error.inspect} not seen on Facebook"])
             end
 
             should_periodically_send_error_alerts(
-              :last_machine_error_alert_sent_at,
-              "Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001"
+              :last_dependency_error_alert_sent_at,
+              "Error: The following remote services are DOWN:\n- #{rpx_connection_refused_error.inspect} by RPX\n- #{facebook_matcher_error.inspect} not seen on Facebook"
             )
           end
 
           context "when the same errors have not been seen previously" do
             it "sends an alert about the errors" do
               plugin.build_report
-              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should include("Error: The following remote services are DOWN:\n- #{rpx_connection_refused_error.inspect} by RPX\n- #{facebook_matcher_error.inspect} not seen on Facebook")
             end
           end
 
           context "there are some errors on this machine that are now gone" do
             before do
-              set_memory(:down, ["- database on hostname1:5000", "- database on hostname1:5002", "- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- #{rpx_connection_refused_error.inspect} by Facebook", "- #{rpx_connection_refused_error.inspect} by RPX", "- #{facebook_matcher_error.inspect} not seen on Facebook"])
             end
 
             it "should alert us that the database on hostname1:5002 has come back up" do
               plugin.build_report
-              plugin.alerts.should include("Success: The following services are UP:\n- database on hostname1:5002")
+              plugin.alerts.should include("Success: The following remote services are UP:\n- #{rpx_connection_refused_error.inspect} by Facebook")
             end
 
             it "should alert us about the systems that are still down" do
               plugin.build_report
-              plugin.alerts.should include("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should include("Error: The following remote services are DOWN:\n- #{rpx_connection_refused_error.inspect} by RPX\n- #{facebook_matcher_error.inspect} not seen on Facebook")
             end
           end
 
           context "there are additional services down now that were not down before" do
             before do
-              set_memory(:down, ["- memcached on hostname1:5000", "- solr on hostname1:5001"])
+              set_memory(:down, ["- #{rpx_connection_refused_error.inspect} by RPX"])
             end
 
             it "should not send a success message" do
@@ -233,34 +251,33 @@ describe ScoutHonkbeatPlugin do
 
             it "should send a down alert message" do
               plugin.build_report
-              plugin.alerts.should match_in_collection("Error: The following services are DOWN:\n- database on hostname1:5000\n- memcached on hostname1:5000\n- solr on hostname1:5001")
+              plugin.alerts.should match_in_collection("Error: The following remote services are DOWN:\n- #{rpx_connection_refused_error.inspect} by RPX\n- #{facebook_matcher_error.inspect} not seen on Facebook")
             end
           end
-
         end
 
-        context "there are no mongrel errors now, and were some before" do
+        context "there are no external service errors now, and were some before" do
           before do
-            set_memory(:down, ["- database on hostname1:5002"])
+            set_memory(:down, ["- #{rpx_connection_refused_error.inspect} by RPX"])
           end
 
           it "should send a success alert" do
             plugin.build_report
-            plugin.alerts.should include("Success: The following services are UP:\n- database on hostname1:5002")
+            plugin.alerts.should include("Success: The following remote services are UP:\n- #{rpx_connection_refused_error.inspect} by RPX")
           end
         end
 
-        context "there are no mongrel errors now, and were none before" do
+        context "there are no external service errors now, and were none before" do
           it "should send no alerts" do
             plugin.build_report
             plugin.alerts.should be_empty
           end
         end
       end
-    end
 
-    def set_memory(key, value)
-      mock(plugin).memory(key) {value}
+      def set_memory(key, value)
+        mock(plugin).memory(key) {value}
+      end
     end
   end
 end
