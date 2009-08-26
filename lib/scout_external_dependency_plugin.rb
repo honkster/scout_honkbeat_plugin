@@ -69,7 +69,7 @@ class ScoutExternalDependencyPlugin < Scout::Plugin
     now_up   = last_down - down if last_down
 
     report_data["Remote Dependencies Down"] = down.length
-    alert("Success: The following remote services are UP:\n#{now_up.join("\n")}") unless now_up.empty?
+    alert("Success: The following remote service errors are FIXED:\n#{now_up.join("\n")}") unless now_up.empty?
 
     last_dependency_error_alert_sent_at = memory(:last_dependency_error_alert_sent_at)
     if !down.empty? && (last_down != down || alert_interval_exceeded?(last_dependency_error_alert_sent_at))

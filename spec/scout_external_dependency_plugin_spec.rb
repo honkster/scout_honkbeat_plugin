@@ -230,7 +230,7 @@ describe ScoutExternalDependencyPlugin do
 
             it "should alert us that the database on hostname1:5002 has come back up" do
               plugin.build_report
-              plugin.alerts.should include("Success: The following remote services are UP:\n- #{rpx_connection_refused_error.inspect} by Facebook")
+              plugin.alerts.should include("Success: The following remote service errors are FIXED:\n- #{rpx_connection_refused_error.inspect} by Facebook")
             end
 
             it "should alert us about the systems that are still down" do
@@ -263,7 +263,7 @@ describe ScoutExternalDependencyPlugin do
 
           it "should send a success alert" do
             plugin.build_report
-            plugin.alerts.should include("Success: The following remote services are UP:\n- #{rpx_connection_refused_error.inspect} by RPX")
+            plugin.alerts.should include("Success: The following remote service errors are FIXED:\n- #{rpx_connection_refused_error.inspect} by RPX")
           end
         end
 
